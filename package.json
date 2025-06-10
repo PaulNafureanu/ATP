@@ -1,10 +1,22 @@
 {
-  "type": "module",
+  "name": "atp",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@types/node": "^22.13.0",
+    "@types/selenium-webdriver": "^4.1.28"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0"
+    "better-sqlite3": "^11.10.0",
+    "selenium-webdriver": "^4.30.0"
   }
 }
