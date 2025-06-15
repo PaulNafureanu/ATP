@@ -349,3 +349,5 @@ db.exec(`
     votes INTEGER NOT NULL
   );
 `);
+
+export default db;
