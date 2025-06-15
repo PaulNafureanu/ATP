@@ -207,6 +207,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS players (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    gender BOOLEAN NOT NULL,
     flashLink TEXT NOT NULL,
     atpLink TEXT NOT NULL,
     sofaLink TEXT NOT NULL,

@@ -1,22 +1,6 @@
-import Driver from "./driver";
+import getCountries from "./countries";
 
 (async () => {
-  const driver = await Driver();
-
-  await driver.get("https://www.flashscore.com/tennis/rankings/atp/");
-
-  await driver.sleep(10 * 1000);
-
-  await driver.quit();
+  const countries = await getCountries();
+  console.log(countries.length, countries);
 })();
-
-/**
- * Extract name list, id, countries, link from ranking
- * Tables:
- * - records end of 2024
- * - countries
- * - injuries
- * - players
- *
- *
- */
