@@ -1,5 +1,8 @@
-import Driver from "./driver";
-import { MutationHandler, MUTATION_HANDLER_SCRIPT } from "./MutationHandler";
+import Driver from "../web/driver";
+import {
+  MutationHandler,
+  MUTATION_HANDLER_SCRIPT,
+} from "../web/MutationHandler";
 
 interface Data {
   countries: string[];
