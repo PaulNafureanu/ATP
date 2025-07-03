@@ -2,7 +2,8 @@ import Database from "better-sqlite3";
 import getCountries from "./tennis/countries";
 import { CountriesModel } from "./db/dbUtils";
 import { ICountries } from "./db/dbInterfaces";
-import { getPlayersLinks } from "./tennis/players";
+import getPlayers, { getPlayersLinks } from "./tennis/players";
+import Driver from "./web/driver";
 
 const db = new Database("tennis.db");
 

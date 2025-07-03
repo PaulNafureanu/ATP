@@ -1,3 +1,4 @@
+import { By, until, WebDriver } from "selenium-webdriver";
 import Driver from "../web/driver";
 import {
   MUTATION_HANDLER_SCRIPT,
@@ -20,13 +21,6 @@ interface Data {
   lastYearStats_id: number; // null
 }
 
-/*
-women:
-- we dont have weight
-
-
-*/
-
 interface PlayerLinks {
   id: string;
   name: string;
@@ -36,46 +30,7 @@ interface PlayerLinks {
   sofaLink: string;
 }
 
-interface LinkType {
-  ranking: "atp" | "wta";
-  website: "flash" | "tour" | "sofa";
-}
-
-const getLink = (type: LinkType) => {
-  let baseLink = "";
-
-  switch (type.website) {
-    case "flash":
-      baseLink = "https://www.flashscore.com/tennis/rankings/";
-      break;
-    case "sofa":
-      baseLink = "https://www.sofascore.ro/ro/tenis/clasament/";
-      break;
-    case "tour":
-      if (type.ranking == "atp")
-        baseLink =
-          "https://www.atptour.com/en/rankings/singles?rankRange=0-5000";
-      else baseLink = "https://www.wtatennis.com/rankings/singles";
-      break;
-  }
-
-  if (type.website != "tour")
-    if (type.ranking == "atp") baseLink += "atp";
-    else baseLink += "wta";
-
-  return baseLink;
-};
-
-const testLinks = () => {
-  console.log("Flash ATP: ", getLink({ website: "flash", ranking: "atp" }));
-  console.log("Flash WTA: ", getLink({ website: "flash", ranking: "wta" }));
-  console.log("Sofa ATP: ", getLink({ website: "sofa", ranking: "atp" }));
-  console.log("Sofa WTA: ", getLink({ website: "sofa", ranking: "wta" }));
-  console.log("Tour ATP: ", getLink({ website: "tour", ranking: "atp" }));
-  console.log("Tour WTA: ", getLink({ website: "tour", ranking: "wta" }));
-};
-
-const PLAYER_LINKS_EXTRACTION_SCRIPT = `
+const FLASH_LINKS_EXTRACTION_SCRIPT = `
     (await MutationHandler.getElement(
       "#live-table > div.rankingTable.tennis > button"
     ))[0].click();
@@ -95,65 +50,101 @@ const PLAYER_LINKS_EXTRACTION_SCRIPT = `
     });
 `;
 
+const SOFA_LINKS_EXTRACTION_SCRIPT = `
+  const names = arguments[0];
+  const searchInput = (await MutationHandler.getElement("#search-input"))[0];
+`;
+
 const getL = async () => {
-  (
-    await MutationHandler.getElement<HTMLButtonElement>(
-      "div.rankingTable__row.rankingTable__row--more"
-    )
-  )[0].click();
+  const searchInput = (
+    await MutationHandler.getElement<HTMLInputElement>("#search-input")
+  )[0];
+  searchInput.value = "Test me";
+  searchInput.form?.submit();
 
-  const playerLinkElements =
-    await MutationHandler.getElement<HTMLAnchorElement>(
-      "div.rankingTable__cell.rankingTable__cell--bold.rankingTable__cell--player a",
-      [],
-      300
-    );
-
-  const playerLinks: string[] = [];
-  playerLinkElements.forEach((value) => playerLinks.push(value.href));
-
-  const data = [];
-
-  playerLinks.forEach((value) => {
-    const linkParts = value.split("/");
-    const name = linkParts[4]
-      .split("-")
-      .reduce((prev, curr) => prev + " " + curr.toUpperCase(), "");
-    const id = linkParts[5];
-
-    data.push({ id, name, link: value });
-  });
-
-  console.log(playerLinks);
+  const eventNames = ["input", "keydown", "keyup"];
+  for (const name of eventNames) {
+    const event = new Event(name, { bubbles: true });
+    searchInput.dispatchEvent(event);
+  }
 };
 
-const getPlayersLinks = async () => {
-  let link = getLink({ website: "flash", ranking: "atp" });
-  const driver = await Driver();
-
-  await driver.get(link);
+const getFlashLinks = async (driver: WebDriver) => {
+  const flashATPLink = "https://www.flashscore.com/tennis/rankings/atp/";
+  await driver.get(flashATPLink);
 
   let flashATP = await driver.executeScript<PlayerLinks[]>(
-    MUTATION_HANDLER_SCRIPT + PLAYER_LINKS_EXTRACTION_SCRIPT + `return data;`
+    MUTATION_HANDLER_SCRIPT + FLASH_LINKS_EXTRACTION_SCRIPT + `return data;`
   );
   flashATP = flashATP.map((value) => {
     return { ...value, gender: false }; //false for men
   });
 
-  link = getLink({ website: "flash", ranking: "wta" });
-  await driver.get(link);
+  const flashWTALink = "https://www.flashscore.com/tennis/rankings/wta/";
+  await driver.get(flashWTALink);
   let flashWTA = await driver.executeScript<PlayerLinks[]>(
-    MUTATION_HANDLER_SCRIPT + PLAYER_LINKS_EXTRACTION_SCRIPT + `return data;`
+    MUTATION_HANDLER_SCRIPT + FLASH_LINKS_EXTRACTION_SCRIPT + `return data;`
   );
   flashWTA = flashWTA.map((value) => {
     return { ...value, gender: true }; // true for women
   });
 
-  const data = flashATP.concat(flashWTA);
+  return flashATP.concat(flashWTA);
+};
 
-  console.log(data[3000]);
+const getSofaLinks = async (driver: WebDriver, playerLinks: PlayerLinks[]) => {
+  const link = "https://sofascore.ro/en-us/tennis";
+  await driver.get(link);
 
-  //   await driver.sleep(30 * 1000);
+  const timer = 3000;
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Find the input
+  const inputLocator = until.elementLocated(By.id("search-input"));
+  const searchInput = await driver.wait(inputLocator, timer);
+  await driver.wait(until.elementIsVisible(searchInput), timer);
+  await driver.wait(until.elementIsEnabled(searchInput), timer);
+  console.time("refresh");
+
+  const recLocator = By.css(
+    "div.beautiful-scrollbar__content.beautiful-scrollbar__content--isDragging_false > div > div > div:nth-child(1) > a"
+  );
+
+  for (let index = 0; index < 2; index++) {
+    // clear and send a new input to search
+    await searchInput.clear();
+    await searchInput.sendKeys(playerLinks[index].name);
+
+    // refind the element, now with a new recommendation
+    const firstRec = await driver.wait(until.elementLocated(recLocator), timer);
+    await driver.wait(until.elementIsVisible(firstRec), timer);
+    await driver.wait(until.elementIsEnabled(firstRec), timer);
+
+    // Wait until result is updated with matching text
+    await driver.wait(async () => {
+      const rec = await driver.findElement(recLocator);
+      const text = await rec.getText();
+      return text
+        .toLowerCase()
+        .includes(playerLinks[index].name.split(" ")[0].toLowerCase());
+    }, timer);
+
+    // Get and store the link
+    playerLinks[index].sofaLink = await firstRec.getAttribute("href");
+    await driver.navigate().refresh();
+  }
+
+  console.timeEnd("refresh");
+  console.log(playerLinks.splice(0, 2));
+};
+
+const getPlayersLinks = async () => {
+  const driver = await Driver();
+  let playerLinks = await getFlashLinks(driver);
+  await getSofaLinks(driver, playerLinks);
+
+  await driver.sleep(0.1 * 60 * 1000);
   await driver.quit();
 };
 
